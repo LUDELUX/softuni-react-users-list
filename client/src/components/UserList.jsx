@@ -7,12 +7,15 @@ import Search from "./Search.jsx";
 import UserListItem from "./UserListItem.jsx";
 import UserCreate from "./UserCreate.jsx";
 import UserInfo from "./UserInfo.jsx";
+import UserDelete from "./UserDelete.jsx";
 
 
 export default function UserList() {
     const [users,setUsers] = useState([]);
     const [showCreate, setShowCreate] = useState(false);
-    const [userIdInfo, setUserIdInfo] = useState();
+    const [userIdInfo, setUserIdInfo] = useState(null);
+    const [userIdDelete,setUserIdDelete]= useState(null);
+    const [userIdEdit,setUserIdEdit]= useState(null);
     useEffect(()=>{
         userService.getAll()
         .then(result =>{
@@ -24,11 +27,12 @@ export default function UserList() {
     };
     const closeUserClickHandler= ()=>{
         setShowCreate(false);
+        setUserIdEdit(null);
     };
     const saveCreateUserHandler =async (e)=>{
         e.preventDefault();
 
-        const formData = new FormData(e.target);
+        const formData = new FormData(e.target.parentElement.parentElement);
         const userData = Object.fromEntries(formData);
         
         const newUser = await userService.create(userData);
@@ -39,10 +43,41 @@ export default function UserList() {
     }
     const userInfoClickHandler =(userId) =>{
        setUserIdInfo(userId);
+    }
+    const userInfoCloseHandler = ()=>{
+      setUserIdInfo(null);
+    }
+    const userDeleteClickHandler = (userId)=>{
+      setUserIdDelete(userId)
+    };
+    const userDeleteCloseHandler = ()=>{
+      setUserIdDelete(null)
+    };
+    const userDeleteHandler =async ()=>{
+      await userService.delete(userIdDelete);
+      setUsers(state => state.filter(user => user._id !== userIdDelete));
+      setUserIdDelete(null);
+    };
+    const userEditClickHandler = (userId)=>{
+      setUserIdEdit(userId)
+    };
+
+
+    const saveEditUserClickHandler=async (e)=>{
+      const userId = userIdEdit
+        e.preventDefault();
+        const formData = new FormData(e.target.parentElement.parentElement);
+        const userData = Object.fromEntries(formData);
+
+        const updateUser = await userService.update(userId,userData);
+
+        setUsers(state=> state.map(user=>user._id ===userId ?updateUser:user))
+
+        setUserIdEdit(null)
+
+
 
     }
-
-
 
     return (
         
@@ -55,8 +90,21 @@ export default function UserList() {
         />)}
         {userIdInfo && (
           <UserInfo
-            userId = {userIdInfo}  
+            userId = {userIdInfo}
+            onClose={userInfoCloseHandler}  
+           
+        />)}
 
+          {userIdDelete && (
+            <UserDelete 
+            onClose= {userDeleteCloseHandler}
+            onDelete={userDeleteHandler}
+            />)}
+            {userIdEdit &&(<UserCreate 
+            onClose= {closeUserClickHandler}
+            onSave ={saveCreateUserHandler}
+            userId={userIdEdit}
+            onEdit={saveEditUserClickHandler}
         />)}
 
         <div className="table-wrapper">
@@ -121,6 +169,8 @@ export default function UserList() {
               {users.map(user => <UserListItem 
               key={user._id}
               onInfoClick= {userInfoClickHandler}
+              onDeleteClick={userDeleteClickHandler}
+              onEditClick={userEditClickHandler}
               {...user}
               
               />)}
